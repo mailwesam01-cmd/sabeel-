@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: sabeel-mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: sabeel-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: sabeelpassword
+      POSTGRES_DB: sabeel
+    ports:
+      - "5432:5432"
+    volumes:
+      - sabeel_db_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    restart: unless-stopped
+
+  ingest-worker:
+    build: 
+      context: ./server/src
+      dockerfile: Dockerfile
+    container_name: sabeel-ingest
+    environment:
+      - MQTT_BROKER=mosquitto
+      - ConnectionStrings__DefaultConnection=Host=timescaledb;Database=sabeel;Username=postgres;Password=sabeelpassword
+    depends_on:
+      - mosquitto
+      - timescaledb
+    restart: unless-stopped
+
+volumes:
+  sabeel_db_data:

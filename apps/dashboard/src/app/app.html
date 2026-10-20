@@ -1,0 +1,740 @@
+<div class="dashboard-layout">
+  <!-- Toast Notification -->
+  @if (toast()) {
+    <div class="toast-notification" [ngClass]="toast()!.type">
+      <span class="toast-icon">
+        @if (toast()!.type === 'success') { ✅ }
+        @else if (toast()!.type === 'warning') { ⚠️ }
+        @else { ℹ️ }
+      </span>
+      <span class="toast-text">{{ toast()!.message }}</span>
+    </div>
+  }
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <span class="water-drop-icon">💧</span>
+      </div>
+      <div class="brand-info">
+        <h2>سَـبـيـل</h2>
+        <span class="brand-subtitle">نظام المراقبة المائية الذكي</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <ul>
+        <li>
+          <button (click)="setTab('overview')" [class.active]="activeTab() === 'overview'">
+            <span class="nav-icon">📍</span>
+            <span>نظرة عامة والخريطة</span>
+          </button>
+        </li>
+        <li>
+          <button (click)="setTab('triage')" [class.active]="activeTab() === 'triage'">
+            <span class="nav-icon">📋</span>
+            <span>طابور فحص التسريبات</span>
+            @if (activeLeaksCount() > 0) {
+              <span class="nav-counter">{{ activeLeaksCount() }}</span>
+            }
+          </button>
+        </li>
+        <li>
+          <button (click)="setTab('simulator')" [class.active]="activeTab() === 'simulator'">
+            <span class="nav-icon">⚡</span>
+            <span>مختبر المحاكاة الحي</span>
+            <span class="nav-badge-live">LIVE</span>
+          </button>
+        </li>
+        <li>
+          <button (click)="setTab('analytics')" [class.active]="activeTab() === 'analytics'">
+            <span class="nav-icon">📊</span>
+            <span>التقارير وسجل الضخ</span>
+          </button>
+        </li>
+        <li>
+          <button (click)="setTab('settings')" [class.active]="activeTab() === 'settings'">
+            <span class="nav-icon">⚙️</span>
+            <span>إعدادات النظام والحساسات</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="telemetry-status">
+        <span class="pulse-dot-online"></span>
+        <span>سيرفر MQTT متصل</span>
+      </div>
+      <span class="version-tag">Sabeel IoT Platform v2.0</span>
+    </div>
+  </aside>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          placeholder="ابحث عن موقع، خزان، أو محافظة..." 
+          [value]="searchQuery()"
+          (input)="searchQuery.set($any($event.target).value)"
+        />
+        @if (searchQuery()) {
+          <button class="clear-search" (click)="searchQuery.set('')">✕</button>
+        }
+      </div>
+
+      <div class="topbar-actions">
+        <button class="btn-export-csv" (click)="exportCsvReport()" title="تصدير التقرير الفني الميداني">
+          <span>⬇️</span> تصدير تقرير CSV
+        </button>
+        <div class="user-chip">
+          <div class="avatar">م.و</div>
+          <div class="user-details">
+            <span class="user-name">وسام (مدير النظام)</span>
+            <span class="user-role">الأردن - عمان</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Workspace -->
+    <div class="content-workspace">
+
+      <!-- ==================== TAB 1: OVERVIEW & MAP ==================== -->
+      @if (activeTab() === 'overview') {
+        <!-- Dynamic KPIs -->
+        <section class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap icon-blue">🏢</div>
+            <div class="kpi-data">
+              <span class="kpi-label">المواقع المراقبة لحظياً</span>
+              <h3 class="kpi-val">{{ totalSitesCount() }} <span>مواقع</span></h3>
+              <span class="kpi-trend positive">✓ جميع الحساسات ترسل إشاراتها</span>
+            </div>
+          </div>
+
+          <div class="kpi-card" [class.alert-border]="activeLeaksCount() > 0">
+            <div class="kpi-icon-wrap icon-red">⚠️</div>
+            <div class="kpi-data">
+              <span class="kpi-label">تسريبات نشطة مكتشفة</span>
+              <h3 class="kpi-val alert-text">{{ activeLeaksCount() }} <span>مواقع بحاجة لصيانة</span></h3>
+              <span class="kpi-trend negative">فقدان مستمر للمياه أثناء الليل</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap icon-amber">💧</div>
+            <div class="kpi-data">
+              <span class="kpi-label">إجمالي الهدر اليومي المقدر</span>
+              <h3 class="kpi-val">{{ totalDailyWasteLiters() }} <span>لتر/يوم</span></h3>
+              <span class="kpi-trend negative">يعادل {{ (totalDailyWasteLiters() * 0.035).toFixed(1) }} د.أ / يوم</span>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon-wrap icon-green">📊</div>
+            <div class="kpi-data">
+              <span class="kpi-label">متوسط امتلاء الخزانات</span>
+              <h3 class="kpi-val">{{ avgWaterLevel() }}%</h3>
+              <span class="kpi-trend neutral">معدل التخزين الحالي في المباني</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Map & Sites Grid Layout -->
+        <div class="overview-split">
+          <!-- Interactive Regional Map -->
+          <div class="card map-card">
+            <div class="card-header">
+              <div>
+                <h3>📍 خريطة المواقع الجغرافية (الأردن)</h3>
+                <p>توزيع حساسات الـ ESP32 وحالات الخزانات حسب المحافظات</p>
+              </div>
+              <div class="map-legend">
+                <span class="legend-item"><span class="dot green"></span> سليم</span>
+                <span class="legend-item"><span class="dot red-pulse"></span> تسريب</span>
+                <span class="legend-item"><span class="dot orange"></span> طوفان</span>
+                <span class="legend-item"><span class="dot blue"></span> ضخ نشط</span>
+              </div>
+            </div>
+
+            <div class="jordan-map-viewport">
+              <svg class="map-background-svg" viewBox="0 0 600 450" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="mapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#EBF4F9" />
+                    <stop offset="100%" stop-color="#D7E8F1" />
+                  </linearGradient>
+                </defs>
+                <!-- Jordan Stylized Regional Contour -->
+                <path d="M 180,30 L 320,40 L 480,90 L 520,200 L 450,320 L 320,420 L 260,390 L 220,330 L 170,250 L 140,160 L 170,80 Z" 
+                      fill="url(#mapGrad)" stroke="#B3D3E4" stroke-width="2" />
+                <!-- Regional Boundaries Guides -->
+                <path d="M 180,120 Q 300,140 460,110" fill="none" stroke="#CCE1ED" stroke-dasharray="4,4" />
+                <path d="M 160,220 Q 320,240 450,220" fill="none" stroke="#CCE1ED" stroke-dasharray="4,4" />
+                
+                <!-- City Labels -->
+                <text x="230" y="90" fill="#6B8899" font-size="13" font-weight="bold">إربد (الشمال)</text>
+                <text x="290" y="195" fill="#00507A" font-size="15" font-weight="bold">عَمّان (العاصمة)</text>
+                <text x="390" y="170" fill="#6B8899" font-size="13" font-weight="bold">الزرقاء</text>
+                <text x="210" y="240" fill="#6B8899" font-size="12">السلط / البلقاء</text>
+              </svg>
+
+              <!-- Clickable Site Pins on Map -->
+              @for (site of sites(); track site.id) {
+                <div 
+                  class="map-pin-marker" 
+                  [style.top.%]="site.mapCoords.top" 
+                  [style.left.%]="site.mapCoords.left"
+                  (click)="openDiagnostics(site)"
+                  [title]="site.name + ' - ' + site.city"
+                >
+                  <span class="pin-pulse" [ngClass]="site.status"></span>
+                  <span class="pin-dot" [ngClass]="site.status">💧</span>
+                  <div class="pin-label-card">
+                    <strong>{{ site.name }}</strong>
+                    <span>{{ site.levelPercent }}% · {{ getStatusArabicLabel(site.status) }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Quick Telemetry Sites Grid -->
+          <div class="card sites-feed-card">
+            <div class="card-header">
+              <h3>📡 حالة الخزانات اللحظية</h3>
+              <span class="badge badge-info">{{ sites().length }} خزانات</span>
+            </div>
+
+            <div class="sites-list-scroll">
+              @for (site of filteredSites(); track site.id) {
+                <div class="site-item-row" (click)="openDiagnostics(site)">
+                  <div class="site-status-indicator" [ngClass]="site.status"></div>
+                  <div class="site-details-compact">
+                    <div class="site-title-line">
+                      <h4>{{ site.name }}</h4>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(site.status)">
+                        {{ getStatusArabicLabel(site.status) }}
+                      </span>
+                    </div>
+                    <span class="site-sub">{{ site.neighborhood }} · {{ site.tankName }}</span>
+                    
+                    <!-- Progress Bar -->
+                    <div class="level-progress-container">
+                      <div 
+                        class="level-progress-bar" 
+                        [style.width.%]="site.levelPercent"
+                        [style.background]="getProgressBarColor(site.levelPercent, site.status)"
+                      ></div>
+                    </div>
+                    
+                    <div class="site-metrics-row">
+                      <span>{{ site.currentLiters }} / {{ site.capacityLiters }} لتر ({{ site.levelPercent }}%)</span>
+                      <span class="hw-stat">🔋 {{ site.batteryPercent }}% · 📶 {{ site.signalDbm }}dBm</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ==================== TAB 2: TRIAGE QUEUE ==================== -->
+      @if (activeTab() === 'triage') {
+        <section class="card triage-card">
+          <div class="triage-toolbar">
+            <div class="filter-pills">
+              <button [class.active]="selectedFilter() === 'all'" (click)="selectedFilter.set('all')">
+                الكل ({{ sites().length }})
+              </button>
+              <button [class.active]="selectedFilter() === 'leak'" (click)="selectedFilter.set('leak')" class="filter-leak">
+                ⚠️ تسريبات حرجة ({{ activeLeaksCount() }})
+              </button>
+              <button [class.active]="selectedFilter() === 'overflow'" (click)="selectedFilter.set('overflow')">
+                🌊 طوفان مياه
+              </button>
+              <button [class.active]="selectedFilter() === 'healthy'" (click)="selectedFilter.set('healthy')">
+                ✓ سليم
+              </button>
+              <button [class.active]="selectedFilter() === 'low'" (click)="selectedFilter.set('low')">
+                منسوب منخفض
+              </button>
+            </div>
+
+            <button class="btn-primary" (click)="exportCsvReport()">
+              <span>⬇️</span> تصدير التقرير الأسبوعي
+            </button>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>الموقع / المبنى</th>
+                  <th>الخزان</th>
+                  <th>المستوى الحالي</th>
+                  <th>الحالة</th>
+                  <th>الهدر اليومي المقدر</th>
+                  <th>تاريخ الاكتشاف</th>
+                  <th>الإجراء والتوجيه</th>
+                  <th>الخيارات</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (site of filteredSites(); track site.id) {
+                  <tr [class.highlight-row]="site.status === 'leak'">
+                    <td>
+                      <strong>{{ site.name }}</strong>
+                      <div class="meta-text">{{ site.city }}، {{ site.neighborhood }}</div>
+                    </td>
+                    <td>{{ site.tankName }}<br><small>{{ site.capacityLiters }} لتر</small></td>
+                    <td>
+                      <strong>{{ site.levelPercent }}%</strong>
+                      <div class="mini-bar-wrap">
+                        <div class="mini-bar" [style.width.%]="site.levelPercent" [style.background]="getProgressBarColor(site.levelPercent, site.status)"></div>
+                      </div>
+                      <small>{{ site.currentLiters }} لتر</small>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getStatusBadgeClass(site.status)">
+                        {{ getStatusArabicLabel(site.status) }}
+                      </span>
+                    </td>
+                    <td>
+                      @if (site.leakLitersPerDay > 0) {
+                        <span class="danger-metric">{{ site.leakLitersPerDay }} لتر/يوم</span>
+                        <div class="cost-metric">≈ {{ (site.leakLitersPerDay * 0.035 * 30).toFixed(1) }} د.أ/شهر</div>
+                      } @else {
+                        <span class="zero-metric">0 لتر</span>
+                      }
+                    </td>
+                    <td>{{ site.detectedSince }}</td>
+                    <td>
+                      <span class="action-text">{{ site.actionRequired }}</span>
+                    </td>
+                    <td class="action-buttons-cell">
+                      <button class="btn-table-action" (click)="openDiagnostics(site)">
+                        🔍 عرض الدليل
+                      </button>
+                      @if (site.status === 'leak') {
+                        <button class="btn-table-dispatch" (click)="dispatchTechnician(site)">
+                          👷 إرسال فني
+                        </button>
+                        <button class="btn-table-resolve" (click)="resolveLeak(site)">
+                          ✓ تأكيد الإصلاح
+                        </button>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+
+      <!-- ==================== TAB 3: ANALYTICS & REPORTS ==================== -->
+      @if (activeTab() === 'analytics') {
+        <div class="analytics-layout">
+          <!-- Weekly Consumption Chart Card -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <div>
+                <h3>📊 معدل استهلاك المياه مقابل الهدر المفقود (آخر 7 أيام)</h3>
+                <p>مقارنة الاستهلاك الفعلي للمباني مقابل كميات المياه المتسربة</p>
+              </div>
+              <span class="badge badge-info">تحليل تراكمي</span>
+            </div>
+
+            <div class="bar-chart-container">
+              <!-- SVG Bar Chart -->
+              <svg class="bar-chart-svg" viewBox="0 0 700 240">
+                <!-- Grid Lines -->
+                <line x1="50" y1="30" x2="680" y2="30" stroke="#E2ECF2" stroke-dasharray="4,4" />
+                <text x="15" y="35" fill="#8EA8B8" font-size="11">5000 لتر</text>
+
+                <line x1="50" y1="80" x2="680" y2="80" stroke="#E2ECF2" stroke-dasharray="4,4" />
+                <text x="15" y="85" fill="#8EA8B8" font-size="11">3500 لتر</text>
+
+                <line x1="50" y1="130" x2="680" y2="130" stroke="#E2ECF2" stroke-dasharray="4,4" />
+                <text x="15" y="135" fill="#8EA8B8" font-size="11">2000 لتر</text>
+
+                <line x1="50" y1="180" x2="680" y2="180" stroke="#E2ECF2" stroke-dasharray="4,4" />
+                <text x="15" y="185" fill="#8EA8B8" font-size="11">500 لتر</text>
+
+                <!-- Base axis -->
+                <line x1="50" y1="200" x2="680" y2="200" stroke="#00507A" stroke-width="2" />
+
+                <!-- Sunday -->
+                <rect x="80" y="55" width="28" height="145" rx="4" fill="#0077B6" />
+                <rect x="112" y="145" width="16" height="55" rx="4" fill="#E63946" />
+                <text x="96" y="222" fill="#04263A" font-size="12" font-weight="bold">الأحد</text>
+
+                <!-- Monday -->
+                <rect x="165" y="75" width="28" height="125" rx="4" fill="#0077B6" />
+                <rect x="197" y="155" width="16" height="45" rx="4" fill="#E63946" />
+                <text x="180" y="222" fill="#04263A" font-size="12" font-weight="bold">الإثنين</text>
+
+                <!-- Tuesday -->
+                <rect x="250" y="65" width="28" height="135" rx="4" fill="#0077B6" />
+                <rect x="282" y="140" width="16" height="60" rx="4" fill="#E63946" />
+                <text x="265" y="222" fill="#04263A" font-size="12" font-weight="bold">الثلاثاء</text>
+
+                <!-- Wednesday -->
+                <rect x="335" y="80" width="28" height="120" rx="4" fill="#0077B6" />
+                <rect x="367" y="135" width="16" height="65" rx="4" fill="#E63946" />
+                <text x="350" y="222" fill="#04263A" font-size="12" font-weight="bold">الأربعاء</text>
+
+                <!-- Thursday -->
+                <rect x="420" y="60" width="28" height="140" rx="4" fill="#0077B6" />
+                <rect x="452" y="130" width="16" height="70" rx="4" fill="#E63946" />
+                <text x="435" y="222" fill="#04263A" font-size="12" font-weight="bold">الخميس</text>
+
+                <!-- Friday -->
+                <rect x="505" y="40" width="28" height="160" rx="4" fill="#0077B6" />
+                <rect x="537" y="125" width="16" height="75" rx="4" fill="#E63946" />
+                <text x="520" y="222" fill="#04263A" font-size="12" font-weight="bold">الجمعة</text>
+
+                <!-- Saturday -->
+                <rect x="590" y="50" width="28" height="150" rx="4" fill="#0077B6" />
+                <rect x="622" y="120" width="16" height="80" rx="4" fill="#E63946" />
+                <text x="605" y="222" fill="#04263A" font-size="12" font-weight="bold">السبت</text>
+              </svg>
+
+              <div class="chart-legend">
+                <span class="legend-box"><span class="box-blue"></span> استهلاك طبيعي للمبنى</span>
+                <span class="legend-box"><span class="box-red"></span> هدر مفقود بسبب التسريب</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Water Distribution Schedule for Jordan -->
+          <div class="card schedule-card">
+            <div class="card-header">
+              <h3>🗓️ جدول دور أدوار الضخ البلدي (سلطة المياه)</h3>
+              <p>مواعيد تزويد الشبكة الحكومية بالأردن للتنبؤ بمواعيد الامتلاء</p>
+            </div>
+
+            <div class="schedule-table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>المحافظة</th>
+                    <th>الأيام المخصصة</th>
+                    <th>حالة الشبكة</th>
+                    <th>الضخ القادم</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>عمان الغربية (خلدا، دابوق، صويلح)</strong></td>
+                    <td>الأحد والثلاثاء</td>
+                    <td><span class="badge badge-refill">ضخ نشط الآن</span></td>
+                    <td>مستمر حتى الغد</td>
+                  </tr>
+                  <tr>
+                    <td><strong>الزرقاء (حي معصوم، الزرقاء الجديدة)</strong></td>
+                    <td>الأربعاء والخميس</td>
+                    <td><span class="badge badge-healthy">مجدول</span></td>
+                    <td>بعد 24 ساعة</td>
+                  </tr>
+                  <tr>
+                    <td><strong>إربد (الحي الجنوبي، الحي الشرقي)</strong></td>
+                    <td>الجمعة والسبت</td>
+                    <td><span class="badge badge-healthy">مجدول</span></td>
+                    <td>بعد 3 أيام</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ==================== TAB 4: LIVE SIMULATOR ==================== -->
+      @if (activeTab() === 'simulator') {
+        <div class="simulator-wrapper">
+          <div class="simulator-panel card">
+            <div class="card-header">
+              <div>
+                <h3>⚡ مختبر المحاكاة التفاعلي للحساسات (IoT Testing Lab)</h3>
+                <p>اختبر رد فعل المنظومة والخوارزميات عبر محاكاة سيناريوهات حقيقية</p>
+              </div>
+              <span class="badge" [class.badge-leak]="simActiveMode() === 'leak'" [class.badge-healthy]="simActiveMode() === 'idle'">
+                الوضع الحالي: {{ simActiveMode().toUpperCase() }}
+              </span>
+            </div>
+
+            <!-- Target Tank Selector -->
+            <div class="sim-selector-row">
+              <label>اختر الخزان المستهدف للمحاكاة:</label>
+              <select [value]="simTargetSiteId()" (change)="simTargetSiteId.set($any($event.target).value)">
+                @for (site of sites(); track site.id) {
+                  <option [value]="site.id">{{ site.name }} - {{ site.tankName }} ({{ site.city }})</option>
+                }
+              </select>
+            </div>
+
+            <!-- Visual Simulated Tank -->
+            <div class="sim-tank-visual-box">
+              <div class="tank-container">
+                <div class="tank-ruler">
+                  <span>100%</span>
+                  <span>75%</span>
+                  <span>50%</span>
+                  <span>25%</span>
+                  <span>0%</span>
+                </div>
+
+                <div class="tank-body">
+                  <div 
+                    class="water-fluid" 
+                    [style.height.%]="selectedSimSite().levelPercent"
+                    [ngClass]="selectedSimSite().status"
+                  >
+                    <div class="wave"></div>
+                    <div class="wave wave-back"></div>
+                  </div>
+                  
+                  <div class="tank-center-readout">
+                    <span class="pct-huge">{{ selectedSimSite().levelPercent }}%</span>
+                    <span class="liters-sub">{{ selectedSimSite().currentLiters }} / {{ selectedSimSite().capacityLiters }} لتر</span>
+                  </div>
+                </div>
+
+                <div class="ultrasonic-sensor-head" title="حساس Ultrasonic JSN-SR04T">
+                  <span class="sensor-icon">📡</span>
+                  <span class="sensor-beam"></span>
+                </div>
+              </div>
+
+              <!-- Live Controls Slider -->
+              <div class="sim-slider-controls">
+                <div class="slider-header">
+                  <span>مستوى منسوب الماء اليدوي:</span>
+                  <strong>{{ selectedSimSite().levelPercent }}% ({{ selectedSimSite().currentLiters }} لتر)</strong>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  [value]="selectedSimSite().levelPercent"
+                  (input)="onSliderChange(+$any($event.target).value)"
+                  class="level-slider"
+                />
+
+                <div class="quick-scenarios-grid">
+                  <button class="btn-scenario leak" (click)="startLeakSimulation()">
+                    🚨 محاكاة تسريب مائي (هبوط 1% كل ثانيتين)
+                  </button>
+                  <button class="btn-scenario refill" (click)="startRefillSimulation()">
+                    🌊 محاكاة ضخ وتعبئة (زيادة سريعة)
+                  </button>
+                  <button class="btn-scenario overflow" (click)="triggerOverflowSimulation()">
+                    ⚠️ محاكاة طوفان الخزان (100% فيضان)
+                  </button>
+                  <button class="btn-scenario reset" (click)="resetSiteToNormal()">
+                    🛑 إيقاف وإعادة ضبط طبيعي (75%)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Live MQTT Terminal Logs -->
+          <div class="card terminal-card">
+            <div class="card-header">
+              <div class="terminal-title">
+                <span class="terminal-dot red"></span>
+                <span class="terminal-dot yellow"></span>
+                <span class="terminal-dot green"></span>
+                <h3>سجل رسائل MQTT الحية (Live Telemetry Stream)</h3>
+              </div>
+              <span class="broker-badge">Broker: localhost:1883</span>
+            </div>
+
+            <div class="terminal-body">
+              @for (log of mqttLogs(); track $index) {
+                <div class="log-line">
+                  <span class="log-time">[{{ log.timestamp }}]</span>
+                  <span class="log-topic">{{ log.topic }}</span>
+                  <span class="log-status" [ngClass]="log.status">{{ log.status }}</span>
+                  <span class="log-payload">{{ log.payload }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ==================== TAB 5: SETTINGS ==================== -->
+      @if (activeTab() === 'settings') {
+        <div class="card settings-card">
+          <div class="card-header">
+            <div>
+              <h3>⚙️ إعدادات النظام وشريحة الحساسات (Hardware Configuration)</h3>
+              <p>ضبط معايير كشف التسريبات وأبعاد الخزانات وسيرفر الـ MQTT</p>
+            </div>
+            <button class="btn-primary" (click)="saveSettings()">💾 حفظ الإعدادات</button>
+          </div>
+
+          <div class="settings-form-grid">
+            <div class="form-group">
+              <label>عنوان خادم الـ MQTT Broker</label>
+              <input type="text" [(ngModel)]="settingsForm.mqttBroker" placeholder="mqtt://localhost:1883" />
+              <small>الخادم الوسيط لاستقبال بيانات ESP32</small>
+            </div>
+
+            <div class="form-group">
+              <label>موضوع البث (MQTT Topic Pattern)</label>
+              <input type="text" [(ngModel)]="settingsForm.mqttTopic" placeholder="sabeel/tank/+/telemetry" />
+              <small>نمط المسارات الفرعية للحساسات</small>
+            </div>
+
+            <div class="form-group">
+              <label>حساسية كاشف التسريب الليلي (Night Leak Threshold)</label>
+              <div class="input-with-unit">
+                <input type="number" [(ngModel)]="settingsForm.nightLeakThreshold" />
+                <span>لتر / ساعة</span>
+              </div>
+              <small>أي هبوط أكبر من هذه القيمة بين 2ص - 5ص يصنف كتسريب مؤكد</small>
+            </div>
+
+            <div class="form-group">
+              <label>الارتفاع القياسي للخزان (Tank Height)</label>
+              <div class="input-with-unit">
+                <input type="number" [(ngModel)]="settingsForm.standardTankHeight" />
+                <span>سم</span>
+              </div>
+              <small>ارتفاع الخزان لحساب المسافة والنسبة المئوية</small>
+            </div>
+
+            <div class="form-group">
+              <label>المنطقة الميتة للحساس (Dead Zone Offset)</label>
+              <div class="input-with-unit">
+                <input type="number" [(ngModel)]="settingsForm.sensorOffset" />
+                <span>سم</span>
+              </div>
+              <small>المسافة الدنيا بين الحساس وأعلى مستوى ماء (عادة 15-20 سم)</small>
+            </div>
+
+            <div class="form-group">
+              <label>رقم هاتف طوارئ الصيانة والإنذار</label>
+              <input type="text" [(ngModel)]="settingsForm.emergencyPhone" placeholder="+962 7 9000 0000" />
+              <small>يرسل إليه إشعار تلقائي عند حدوث تسريب متواصل</small>
+            </div>
+          </div>
+        </div>
+      }
+
+    </div>
+  </main>
+
+  <!-- ==================== DIAGNOSTIC INSPECTION MODAL ==================== -->
+  @if (activeDiagnosticSite()) {
+    <div class="modal-backdrop" (click)="closeDiagnostics()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="badge" [ngClass]="getStatusBadgeClass(activeDiagnosticSite()!.status)">
+              {{ getStatusArabicLabel(activeDiagnosticSite()!.status) }}
+            </span>
+            <h2>تقرير التشخيص الفني: {{ activeDiagnosticSite()!.name }}</h2>
+            <span class="modal-sub">{{ activeDiagnosticSite()!.city }}، {{ activeDiagnosticSite()!.neighborhood }} · {{ activeDiagnosticSite()!.tankName }}</span>
+          </div>
+          <button class="modal-close-btn" (click)="closeDiagnostics()">✕</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Scientific Evidence & Reason -->
+          <div class="evidence-box">
+            <h4>🔬 الدليل الخوارزمي لاكتشاف الخلل:</h4>
+            <p>
+              تم رصد <strong>هبوط مستمر بمعدل {{ activeDiagnosticSite()!.hourlyNightDrop > 0 ? activeDiagnosticSite()!.hourlyNightDrop : 18 }} لتر/ساعة</strong>
+              في الفترة الزمنية المحصورة بين <strong>02:00 ص و 05:00 ص</strong> (فترة سكون الاستهلاك البشري). 
+              معادلة الانحدار الخطي تثبت وجود تدفق ميكانيكي غير مقصود (Mechanical Constant Leak).
+            </p>
+          </div>
+
+          <!-- Night Inactivity Chart -->
+          <div class="modal-chart-section">
+            <h5>مخطط الهبوط الليلي (Night Consumption Slope):</h5>
+            <svg class="modal-chart-svg" viewBox="0 0 500 150">
+              <!-- Background Grid -->
+              <rect x="0" y="0" width="500" height="150" fill="#F8FAFC" rx="8" />
+              <!-- Red Inactivity Highlight Window (02:00 - 05:00) -->
+              <rect x="120" y="10" width="160" height="110" fill="rgba(230, 57, 70, 0.12)" rx="4" />
+              <text x="145" y="28" fill="#E63946" font-size="11" font-weight="bold">فترة السكون (02:00 - 05:00 ص)</text>
+
+              <!-- Water Curve Path -->
+              <path d="M 20,40 L 120,45 L 200,75 L 280,105 L 420,110 L 480,112" 
+                    fill="none" stroke="#0077B6" stroke-width="3" stroke-linecap="round" />
+
+              <!-- Leak Slope Indicator Line -->
+              <line x1="120" y1="45" x2="280" y2="105" stroke="#E63946" stroke-width="2" stroke-dasharray="4,4" />
+              
+              <!-- Points -->
+              <circle cx="120" cy="45" r="5" fill="#0077B6" />
+              <circle cx="280" cy="105" r="5" fill="#E63946" />
+
+              <!-- X Axis Labels -->
+              <text x="15" y="140" fill="#64748B" font-size="10">12:00 ص</text>
+              <text x="120" y="140" fill="#E63946" font-size="10" font-weight="bold">02:00 ص</text>
+              <text x="270" y="140" fill="#E63946" font-size="10" font-weight="bold">05:00 ص</text>
+              <text x="400" y="140" fill="#64748B" font-size="10">08:00 ص</text>
+            </svg>
+          </div>
+
+          <!-- Financial & Physical Loss Grid -->
+          <div class="metrics-summary-grid">
+            <div class="metric-item">
+              <span>الفاقد اليومي</span>
+              <strong>{{ activeDiagnosticSite()!.leakLitersPerDay }} لتر</strong>
+            </div>
+            <div class="metric-item">
+              <span>الفاقد الشهري</span>
+              <strong>{{ ((activeDiagnosticSite()!.leakLitersPerDay * 30) / 1000).toFixed(1) }} متر مكعب</strong>
+            </div>
+            <div class="metric-item danger">
+              <span>التكلفة التقديرية</span>
+              <strong>{{ (activeDiagnosticSite()!.leakLitersPerDay * 0.035 * 30).toFixed(1) }} د.أ / شهر</strong>
+            </div>
+            <div class="metric-item">
+              <span>مستوى الخزان الحالي</span>
+              <strong>{{ activeDiagnosticSite()!.levelPercent }}%</strong>
+            </div>
+          </div>
+
+          <!-- Likely Causes Checklist -->
+          <div class="causes-box">
+            <h5>الأسباب الميكانيكية المرجحة:</h5>
+            <ul>
+              <li><strong>عوامة الخزان (Mechanical Float Valve):</strong> عطل أو تكلس يمنع الإغلاق المحكم (احتمال 75%).</li>
+              <li><strong>خط الصاعد/النازل:</strong> وجود تشقق أو وصلة نبل مهترئة في شبكة السطح (احتمال 20%).</li>
+              <li><strong>تهريب داخلي:</strong> تسريب صامت في أحد صناديق الطرد (سيفون) داخل إحدى الشقق (احتمال 5%).</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-dispatch" (click)="dispatchTechnician(activeDiagnosticSite()!)">
+            👷 إرسال بلاغ فني عاجل للموقع
+          </button>
+          @if (activeDiagnosticSite()!.status === 'leak') {
+            <button class="btn-resolve" (click)="resolveLeak(activeDiagnosticSite()!)">
+              ✓ تم حل المشكلة وإغلاق البلاغ
+            </button>
+          }
+          <button class="btn-secondary" (click)="closeDiagnostics()">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

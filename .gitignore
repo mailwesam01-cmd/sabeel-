@@ -1,0 +1,31 @@
+# Node & Angular
+**/node_modules/
+**/.angular/
+.npm/
+
+# Flutter / Dart
+**/.dart_tool/
+**/build/
+.pub-cache/
+.pub/
+
+# .NET / C#
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# PlatformIO / C++
+**/.pio/
+**/.vscode/
+**/.idea/
+
+# OS files
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+
+# Logs
+*.log
