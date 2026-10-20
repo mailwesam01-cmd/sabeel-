@@ -1,6 +1,16 @@
 {
   "name": "dashboard",
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Sabeel Water Intelligence Angular GIS Fleet Dashboard & Leak Diagnostics Modal",
+  "keywords": [
+    "angular",
+    "signals",
+    "gis-mapping",
+    "water-intelligence",
+    "fleet-management",
+    "leak-detection",
+    "iot-telemetry"
+  ],
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
